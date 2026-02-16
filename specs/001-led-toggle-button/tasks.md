@@ -23,9 +23,9 @@
 
 **Purpose**: nRF Connect SDK / Zephyr プロジェクトの初期化と基本構成
 
-- [ ] T001 Create project directory structure with `src/` directory
-- [ ] T002 [P] Create CMake build definition in `CMakeLists.txt` with Zephyr package, project name `led_toggle_button`, and `src/main.c` as target source
-- [ ] T003 [P] Create Kconfig settings in `prj.conf` with `CONFIG_GPIO=y`, `CONFIG_DK_LIBRARY=y`, `CONFIG_LOG=y`
+- [x] T001 Create project directory structure with `src/` directory
+- [x] T002 [P] Create CMake build definition in `CMakeLists.txt` with Zephyr package, project name `led_toggle_button`, and `src/main.c` as target source
+- [x] T003 [P] Create Kconfig settings in `prj.conf` with `CONFIG_GPIO=y`, `CONFIG_DK_LIBRARY=y`, `CONFIG_LOG=y`
 
 **Checkpoint**: `west build -b nrf52840dk/nrf52840` が成功すること（main.c がスタブでも）
 
@@ -37,10 +37,10 @@
 
 **⚠️ CRITICAL**: ユーザーストーリーの実装は、この Phase の完了後に開始する
 
-- [ ] T004 Create application entry point in `src/main.c` with Zephyr kernel include, dk_buttons_and_leds include, LOG_MODULE_REGISTER, and empty `main()` function
-- [ ] T005 Implement LED initialization in `src/main.c`: call `dk_leds_init()` in `main()` with error check and LOG_ERR on failure (FR-001)
-- [ ] T006 Implement button initialization in `src/main.c`: define empty `button_handler()` callback, call `dk_buttons_init(button_handler)` in `main()` with error check and LOG_ERR on failure
-- [ ] T007 Declare LED state variable `static uint32_t led_state` initialized to 0 in `src/main.c` (data-model: ビットマスク管理)
+- [x] T004 Create application entry point in `src/main.c` with Zephyr kernel include, dk_buttons_and_leds include, LOG_MODULE_REGISTER, and empty `main()` function
+- [x] T005 Implement LED initialization in `src/main.c`: call `dk_leds_init()` in `main()` with error check and LOG_ERR on failure (FR-001)
+- [x] T006 Implement button initialization in `src/main.c`: define empty `button_handler()` callback, call `dk_buttons_init(button_handler)` in `main()` with error check and LOG_ERR on failure
+- [x] T007 Declare LED state variable `static uint32_t led_state` initialized to 0 in `src/main.c` (data-model: ビットマスク管理)
 
 **Checkpoint**: ビルド成功、書き込み後にデバイスが起動し全LED消灯、ボタン押下でコールバック到達（ログ確認）
 
@@ -54,9 +54,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement press-edge detection in `button_handler()` in `src/main.c`: compute `uint32_t pressed = has_changed & button_state` to detect only button-press events (FR-006, FR-007)
-- [ ] T009 [US1] Implement LED toggle for Button 1 in `button_handler()` in `src/main.c`: when `pressed & DK_BTN1_MSK`, toggle `led_state ^= DK_LED1_MSK` and call `dk_set_leds(led_state)` (FR-003)
-- [ ] T010 [US1] Add LOG_INF for button press and LED state change events in `button_handler()` in `src/main.c` for debugging
+- [x] T008 [US1] Implement press-edge detection in `button_handler()` in `src/main.c`: compute `uint32_t pressed = has_changed & button_state` to detect only button-press events (FR-006, FR-007)
+- [x] T009 [US1] Implement LED toggle for Button 1 in `button_handler()` in `src/main.c`: when `pressed & DK_BTN1_MSK`, toggle `led_state ^= DK_LED1_MSK` and call `dk_set_leds(led_state)` (FR-003)
+- [x] T010 [US1] Add LOG_INF for button press and LED state change events in `button_handler()` in `src/main.c` for debugging
 
 **Checkpoint**: Button 1 → LED 1 トグル動作確認。押下のみ反応、長押しで1回のみ、デバウンス動作正常。
 
@@ -70,8 +70,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Verify and enforce LED off state after initialization in `main()` in `src/main.c`: add explicit `dk_set_leds(0)` call after `dk_leds_init()` to guarantee all LEDs start OFF (FR-001)
-- [ ] T012 [US2] Add LOG_INF startup message in `main()` in `src/main.c` printing "LED Toggle Button application started" and initial `led_state` value for boot confirmation
+- [x] T011 [US2] Verify and enforce LED off state after initialization in `main()` in `src/main.c`: add explicit `dk_set_leds(0)` call after `dk_leds_init()` to guarantee all LEDs start OFF (FR-001)
+- [x] T012 [US2] Add LOG_INF startup message in `main()` in `src/main.c` printing "LED Toggle Button application started" and initial `led_state` value for boot confirmation
 
 **Checkpoint**: 電源投入時に全LED消灯＋起動ログ出力。リセットボタン押下後も全LED消灯に復帰。
 
@@ -85,10 +85,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T013 [P] [US3] Extend `button_handler()` in `src/main.c` to handle Button 2: when `pressed & DK_BTN2_MSK`, toggle `led_state ^= DK_LED2_MSK` and call `dk_set_leds(led_state)` (FR-002, FR-005)
-- [ ] T014 [P] [US3] Extend `button_handler()` in `src/main.c` to handle Button 3: when `pressed & DK_BTN3_MSK`, toggle `led_state ^= DK_LED3_MSK` and call `dk_set_leds(led_state)` (FR-002, FR-005)
-- [ ] T015 [P] [US3] Extend `button_handler()` in `src/main.c` to handle Button 4: when `pressed & DK_BTN4_MSK`, toggle `led_state ^= DK_LED4_MSK` and call `dk_set_leds(led_state)` (FR-002, FR-005)
-- [ ] T016 [US3] Refactor `button_handler()` in `src/main.c` to use loop over button-LED pairs array instead of repeated if-statements for maintainability (optional improvement)
+- [x] T013 [P] [US3] Extend `button_handler()` in `src/main.c` to handle Button 2: when `pressed & DK_BTN2_MSK`, toggle `led_state ^= DK_LED2_MSK` and call `dk_set_leds(led_state)` (FR-002, FR-005)
+- [x] T014 [P] [US3] Extend `button_handler()` in `src/main.c` to handle Button 3: when `pressed & DK_BTN3_MSK`, toggle `led_state ^= DK_LED3_MSK` and call `dk_set_leds(led_state)` (FR-002, FR-005)
+- [x] T015 [P] [US3] Extend `button_handler()` in `src/main.c` to handle Button 4: when `pressed & DK_BTN4_MSK`, toggle `led_state ^= DK_LED4_MSK` and call `dk_set_leds(led_state)` (FR-002, FR-005)
+- [x] T016 [US3] Refactor `button_handler()` in `src/main.c` to use loop over button-LED pairs array instead of repeated if-statements for maintainability (optional improvement)
 
 **Checkpoint**: 4つのボタンすべてが対応する LED を独立トグル。同時押し・連打でも正常動作。
 
@@ -98,10 +98,10 @@
 
 **Purpose**: コード品質の向上と最終検証
 
-- [ ] T017 [P] Add file header comment with license, project description, and FR reference in `src/main.c`
-- [ ] T018 [P] Verify `prj.conf` contains all required settings and add `CONFIG_DK_LIBRARY_BUTTON_SCAN_INTERVAL=15` for spec FR-004 debounce requirement in `prj.conf`
-- [ ] T019 Run quickstart.md full test checklist on nRF52840DK hardware (10 test items)
-- [ ] T020 Verify clean build with `west build -b nrf52840dk/nrf52840 --pristine` produces zero warnings
+- [x] T017 [P] Add file header comment with license, project description, and FR reference in `src/main.c`
+- [x] T018 [P] Verify `prj.conf` contains all required settings and add `CONFIG_DK_LIBRARY_BUTTON_SCAN_INTERVAL=15` for spec FR-004 debounce requirement in `prj.conf`
+- [ ] T019 Run quickstart.md full test checklist on nRF52840DK hardware (10 test items) ⚠️ Requires nRF Connect SDK environment + hardware
+- [x] T020 Verify clean build with `west build -b nrf52840dk_nrf52840 --pristine` produces zero warnings ✅ Build succeeded (FLASH: 3.44%, RAM: 4.27%, 0 warnings)
 
 ---
 
