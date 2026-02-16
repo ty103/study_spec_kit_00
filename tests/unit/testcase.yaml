@@ -1,0 +1,10 @@
+tests:
+  app.led_toggle_button.unit:
+    tags:
+      - button
+      - led
+      - unit_test
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim

@@ -1,0 +1,19 @@
+# Docker Compose for running ztest unit tests
+#
+# Usage:
+#   docker compose run --rm test              # Run all tests
+#   docker compose run --rm test bash         # Interactive shell
+#   docker compose run --rm test scripts/test.sh --verbose  # Verbose output
+
+services:
+  test:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.test
+    volumes:
+      # Mount the entire workspace (project + external deps) as read-write
+      - ..:/workspace
+    environment:
+      - ZEPHYR_BASE=/workspace/external/zephyr
+    working_dir: /workspace/study_spec_kit_00

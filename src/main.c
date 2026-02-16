@@ -14,41 +14,37 @@
 #include <dk_buttons_and_leds.h>
 #include <zephyr/logging/log.h>
 
+#include "led_toggle.h"
+
 LOG_MODULE_REGISTER(led_toggle, LOG_LEVEL_INF);
-
-/* LED state managed as a bitmask (data-model: ビットマスク管理)
- * Bit 0: LED 1, Bit 1: LED 2, Bit 2: LED 3, Bit 3: LED 4
- * Initial value: 0x00 (all LEDs off) per FR-001
- */
-static uint32_t led_state;
-
-/* Button-LED pair mapping for loop-based toggle (FR-002) */
-static const uint32_t btn_masks[] = {
-	DK_BTN1_MSK, DK_BTN2_MSK, DK_BTN3_MSK, DK_BTN4_MSK
-};
-static const uint32_t led_masks[] = {
-	DK_LED1_MSK, DK_LED2_MSK, DK_LED3_MSK, DK_LED4_MSK
-};
 
 static void button_handler(uint32_t button_state, uint32_t has_changed)
 {
-	/* Detect press-edge only: changed AND currently pressed (FR-006, FR-007) */
-	uint32_t pressed = has_changed & button_state;
+	uint32_t new_state = led_toggle_process(button_state, has_changed);
 
-	if (!pressed) {
+	if (!led_toggle_had_press()) {
 		return;
 	}
 
-	for (int i = 0; i < ARRAY_SIZE(btn_masks); i++) {
-		if (pressed & btn_masks[i]) {
-			led_state ^= led_masks[i];
-			LOG_INF("Button %d pressed → LED %d %s",
-				i + 1, i + 1,
-				(led_state & led_masks[i]) ? "ON" : "OFF");
-		}
+	/* Log individual button presses for debugging */
+	if (has_changed & button_state & DK_BTN1_MSK) {
+		LOG_INF("Button 1 pressed → LED 1 %s",
+			(new_state & DK_LED1_MSK) ? "ON" : "OFF");
+	}
+	if (has_changed & button_state & DK_BTN2_MSK) {
+		LOG_INF("Button 2 pressed → LED 2 %s",
+			(new_state & DK_LED2_MSK) ? "ON" : "OFF");
+	}
+	if (has_changed & button_state & DK_BTN3_MSK) {
+		LOG_INF("Button 3 pressed → LED 3 %s",
+			(new_state & DK_LED3_MSK) ? "ON" : "OFF");
+	}
+	if (has_changed & button_state & DK_BTN4_MSK) {
+		LOG_INF("Button 4 pressed → LED 4 %s",
+			(new_state & DK_LED4_MSK) ? "ON" : "OFF");
 	}
 
-	dk_set_leds(led_state);
+	dk_set_leds(new_state);
 }
 
 int main(void)
@@ -57,7 +53,10 @@ int main(void)
 
 	LOG_INF("LED Toggle Button application started");
 
-	/* Initialize LEDs - all OFF (FR-001) */
+	/* Initialize LED toggle logic — all OFF (FR-001) */
+	led_toggle_reset();
+
+	/* Initialize LEDs hardware — all OFF (FR-001) */
 	err = dk_leds_init();
 	if (err) {
 		LOG_ERR("dk_leds_init failed (err %d)", err);
@@ -74,7 +73,8 @@ int main(void)
 		return err;
 	}
 
-	LOG_INF("All LEDs initialized OFF, led_state=0x%08x", led_state);
+	LOG_INF("All LEDs initialized OFF, led_state=0x%08x",
+		led_toggle_get_state());
 	LOG_INF("Buttons ready. Press Button N to toggle LED N.");
 
 	return 0;

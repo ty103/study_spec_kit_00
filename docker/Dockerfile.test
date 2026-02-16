@@ -1,0 +1,55 @@
+# Docker environment for Zephyr ztest on native_sim
+#
+# Provides a Linux environment where `west twister` can run tests
+# using the native_sim board target, which requires ELF/Linux.
+#
+# Usage:
+#   docker compose run --rm test          # Run all unit tests
+#   docker compose run --rm test bash     # Interactive shell
+#
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG ZEPHYR_SDK_VERSION=0.17.0
+
+# Detect host architecture for SDK download
+ARG TARGETARCH
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    ccache \
+    device-tree-compiler \
+    gcc-multilib \
+    g++-multilib \
+    git \
+    gperf \
+    ninja-build \
+    python3-pip \
+    python3-venv \
+    wget \
+    xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install west + all Python deps needed by Twister
+RUN pip3 install --no-cache-dir \
+    west ply pyyaml pykwalify packaging colorama pyelftools \
+    psutil tabulate anytree natsort
+
+# Install minimal Zephyr SDK (native_sim uses host gcc, so SDK host tools are optional)
+RUN SDK_ARCH=$(case "${TARGETARCH}" in arm64) echo "aarch64";; *) echo "x86_64";; esac) \
+    && wget -q "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-${SDK_ARCH}_minimal.tar.xz" \
+    && tar xf "zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-${SDK_ARCH}_minimal.tar.xz" -C /opt \
+    && rm "zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-${SDK_ARCH}_minimal.tar.xz" \
+    && /opt/zephyr-sdk-${ZEPHYR_SDK_VERSION}/setup.sh -c \
+    || true
+
+ENV ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk-${ZEPHYR_SDK_VERSION}
+ENV ZEPHYR_TOOLCHAIN_VARIANT=host
+
+# Working directory: project will be mounted here
+WORKDIR /workspace
+
+# Default command: run unit tests
+CMD ["bash", "-c", "scripts/test.sh"]
