@@ -33,6 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install west + all Python deps needed by Twister
+# Note: pip3 を使用。このコンテナは使い捨てのテスト実行環境であり、
+# パッケージ数も少ないため uv 等の高速パッケージマネージャは不要。
 RUN pip3 install --no-cache-dir \
     west ply pyyaml pykwalify packaging colorama pyelftools \
     psutil tabulate anytree natsort junitparser pytest
