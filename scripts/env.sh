@@ -13,7 +13,7 @@
 set -e
 
 # --- Configuration -----------------------------------------------------------
-NCS_TOOLCHAIN_BASE="/opt/nordic/ncs/toolchains/561dce9adf"
+NCS_TOOLCHAIN_BASE="/opt/nordic/ncs/toolchains/e5f4758bcf"
 
 # Detect script location and project root
 if [[ -n "${BASH_SOURCE[0]}" ]]; then

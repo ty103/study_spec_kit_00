@@ -15,7 +15,7 @@ nRF52840DK 上のボタン（Button 1〜4）を押すたびに、対応する LE
 | 項目 | 詳細 |
 |---|---|
 | ハードウェア | nRF52840DK (PCA10056) |
-| SDK | nRF Connect SDK v2.6.3 |
+| SDK | nRF Connect SDK v3.2.2 |
 | ツールチェーン | nRF Connect SDK Toolchain（`/opt/nordic/ncs/toolchains/` にインストール済み） |
 | J-Link | SEGGER J-Link ドライバ |
 | Docker | テスト実行用（macOS の場合は Docker Desktop が必要） |
@@ -78,13 +78,13 @@ source study_spec_kit_00/scripts/env.sh --check
 
 ```bash
 source study_spec_kit_00/scripts/env.sh
-west build -b nrf52840dk_nrf52840 study_spec_kit_00 --pristine
+west build -b nrf52840dk/nrf52840 study_spec_kit_00 --pristine
 ```
 
 > ⚠️ **macOS でビルドがハングする場合**: CMake の GDB 検出フェーズで `arm-zephyr-eabi-gdb-py --configuration` がフリーズすることがあります。以下のオプションで回避できます：
 > ```bash
-> west build -b nrf52840dk_nrf52840 study_spec_kit_00 --pristine -- \
->   -DCMAKE_GDB=/opt/nordic/ncs/toolchains/561dce9adf/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb
+> west build -b nrf52840dk/nrf52840 study_spec_kit_00 --pristine -- \
+>   -DCMAKE_GDB=/opt/nordic/ncs/toolchains/e5f4758bcf/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb
 > ```
 
 ## 書き込み・実行
@@ -235,7 +235,7 @@ macOS (ARM64)
 study_spec_kit_00/
 ├── CMakeLists.txt              # Zephyr ビルド定義
 ├── prj.conf                    # Kconfig 設定
-├── west.yml                    # West マニフェスト（NCS v2.6.3）
+├── west.yml                    # West マニフェスト（NCS v3.2.2）
 ├── README.md                   # このファイル
 ├── docker-compose.yml          # テスト用 Docker Compose 設定
 ├── .dockerignore               # Docker ビルド除外設定
