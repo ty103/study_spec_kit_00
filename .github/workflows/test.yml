@@ -22,7 +22,7 @@ jobs:
       - name: Initialize West workspace
         working-directory: .
         run: |
-          pip3 install west
+          pip3 install 'west>=1.0.0,<2.0.0'
           west init -l study_spec_kit_00
       
       - name: Configure West for Zephyr
@@ -41,6 +41,7 @@ jobs:
       - name: Run unit tests with Docker Compose
         working-directory: study_spec_kit_00
         run: |
+          set -e
           docker compose run --rm test
       
       - name: Upload test results
