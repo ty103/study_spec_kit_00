@@ -42,6 +42,13 @@ if [[ ! -d "${ZEPHYR_BASE}" ]]; then
     exit 1
 fi
 
+# Configure Git safe.directory to allow access to repositories owned by different users
+# This is needed when running in Docker where the workspace is mounted from the host
+find "${WORKSPACE_ROOT}" -name ".git" -type d 2>/dev/null | while read -r gitdir; do
+    repo_dir="$(dirname "$gitdir")"
+    git config --global --add safe.directory "$repo_dir" 2>/dev/null || true
+done
+
 # Install Zephyr Python dependencies if needed
 if ! python3 -c "import elftools" 2>/dev/null || ! python3 -c "import ply" 2>/dev/null; then
     echo "Installing Zephyr Python dependencies..."
@@ -55,14 +62,18 @@ echo " Running unit tests (native_sim + ztest)"
 echo " ZEPHYR_BASE: ${ZEPHYR_BASE}"
 echo "============================================="
 
-cd "${PROJECT_ROOT}"
-
 # Clean previous results
+cd "${PROJECT_ROOT}"
 rm -rf twister-out twister-out.*
 
+# Run west twister from workspace root so it can find .west directory
+# Use -C to specify the project directory and -O for output directory
+cd "${WORKSPACE_ROOT}"
+
 west twister \
-    -T tests/unit \
+    -T "$(basename "${PROJECT_ROOT}")/tests/unit" \
     -p native_sim \
+    -O "$(basename "${PROJECT_ROOT}")/twister-out" \
     ${VERBOSE} \
     ${EXTRA_ARGS} \
     2>&1
