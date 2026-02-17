@@ -12,6 +12,8 @@ jobs:
   unit-tests:
     name: Run ztest Unit Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout repository
