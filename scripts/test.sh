@@ -62,18 +62,19 @@ echo " Running unit tests (native_sim + ztest)"
 echo " ZEPHYR_BASE: ${ZEPHYR_BASE}"
 echo "============================================="
 
-# Clean previous results
-cd "${PROJECT_ROOT}"
-rm -rf twister-out twister-out.*
+# Calculate relative path from workspace root to project root
+PROJECT_REL_PATH="${PROJECT_ROOT#${WORKSPACE_ROOT}/}"
 
-# Run west twister from workspace root so it can find .west directory
-# Use -C to specify the project directory and -O for output directory
+# Change to workspace root for West commands
 cd "${WORKSPACE_ROOT}"
 
+# Clean previous results
+rm -rf "${PROJECT_REL_PATH}/twister-out" "${PROJECT_REL_PATH}/twister-out."*
+
 west twister \
-    -T "$(basename "${PROJECT_ROOT}")/tests/unit" \
+    -T "${PROJECT_REL_PATH}/tests/unit" \
     -p native_sim \
-    -O "$(basename "${PROJECT_ROOT}")/twister-out" \
+    -O "${PROJECT_REL_PATH}/twister-out" \
     ${VERBOSE} \
     ${EXTRA_ARGS} \
     2>&1
