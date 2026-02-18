@@ -42,6 +42,16 @@ if [[ ! -d "${ZEPHYR_BASE}" ]]; then
     exit 1
 fi
 
+# Configure Git safe.directory to allow access to repositories owned by different users
+# This is needed when running in Docker where the workspace is mounted from the host
+# Only run this if we're likely in a container (check for /.dockerenv or if user is root with non-root owned files)
+if [[ -f /.dockerenv ]] || [[ $EUID -eq 0 && $(find "${WORKSPACE_ROOT}" -maxdepth 1 -name ".git" -not -user root 2>/dev/null | wc -l) -gt 0 ]]; then
+    find "${WORKSPACE_ROOT}" -name ".git" -type d 2>/dev/null | while read -r gitdir; do
+        repo_dir="$(dirname "$gitdir")"
+        git config --global --add safe.directory "$repo_dir" 2>/dev/null || true
+    done
+fi
+
 # Install Zephyr Python dependencies if needed
 if ! python3 -c "import elftools" 2>/dev/null || ! python3 -c "import ply" 2>/dev/null; then
     echo "Installing Zephyr Python dependencies..."
@@ -55,14 +65,19 @@ echo " Running unit tests (native_sim + ztest)"
 echo " ZEPHYR_BASE: ${ZEPHYR_BASE}"
 echo "============================================="
 
-cd "${PROJECT_ROOT}"
+# Calculate relative path from workspace root to project root
+PROJECT_REL_PATH="${PROJECT_ROOT#${WORKSPACE_ROOT}/}"
 
-# Clean previous results
-rm -rf twister-out twister-out.*
+# Change to workspace root for West commands
+cd "${WORKSPACE_ROOT}"
+
+# Clean previous results (remove twister-out and any backup copies)
+rm -rf "${PROJECT_REL_PATH}"/twister-out*
 
 west twister \
-    -T tests/unit \
+    -T "${PROJECT_REL_PATH}/tests/unit" \
     -p native_sim \
+    -O "${PROJECT_REL_PATH}/twister-out" \
     ${VERBOSE} \
     ${EXTRA_ARGS} \
     2>&1
