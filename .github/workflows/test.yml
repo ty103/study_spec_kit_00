@@ -40,24 +40,11 @@ jobs:
         run: |
           west update --narrow -o=--depth=1
       
-      - name: Install test dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            cmake \
-            device-tree-compiler \
-            gcc-multilib \
-            g++-multilib \
-            ninja-build
-          pip3 install --no-cache-dir \
-            ply pyyaml pykwalify packaging colorama pyelftools \
-            psutil tabulate anytree natsort junitparser pytest
-      
-      - name: Run unit tests
+      - name: Run unit tests with Docker Compose
         working-directory: study_spec_kit_00
         run: |
-          ./scripts/test.sh
+          set -e
+          docker compose run --rm test
       
       - name: Upload test results
         if: always()
