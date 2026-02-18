@@ -42,9 +42,9 @@ if [[ ! -d "${ZEPHYR_BASE}" ]]; then
     exit 1
 fi
 
-# Configure Git safe.directory to allow access to repositories owned by different users
-# This is needed when running in Docker where the workspace is mounted from the host
-# Only run this if we're likely in a container (check for /.dockerenv or if user is root with non-root owned files)
+# 異なるユーザーが所有するリポジトリへのアクセスを許可するため Git safe.directory を設定
+# Docker でワークスペースがホストからマウントされる場合に必要
+# コンテナ内で実行されている可能性がある場合のみ実行（/.dockerenv の存在または root ユーザーで非 root 所有ファイルがある場合）
 if [[ -f /.dockerenv ]] || [[ $EUID -eq 0 && $(find "${WORKSPACE_ROOT}" -maxdepth 1 -name ".git" -not -user root 2>/dev/null | wc -l) -gt 0 ]]; then
     find "${WORKSPACE_ROOT}" -name ".git" -type d 2>/dev/null | while read -r gitdir; do
         repo_dir="$(dirname "$gitdir")"
@@ -65,13 +65,13 @@ echo " Running unit tests (native_sim + ztest)"
 echo " ZEPHYR_BASE: ${ZEPHYR_BASE}"
 echo "============================================="
 
-# Calculate relative path from workspace root to project root
+# ワークスペースルートからプロジェクトルートへの相対パスを計算
 PROJECT_REL_PATH="${PROJECT_ROOT#${WORKSPACE_ROOT}/}"
 
-# Change to workspace root for West commands
+# West コマンドのためワークスペースルートに移動
 cd "${WORKSPACE_ROOT}"
 
-# Clean previous results (remove twister-out and any backup copies)
+# 前回のテスト結果を削除（twister-out とバックアップファイル）
 rm -rf "${PROJECT_REL_PATH}"/twister-out*
 
 west twister \
