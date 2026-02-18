@@ -57,7 +57,6 @@ jobs:
       - name: Run unit tests
         working-directory: study_spec_kit_00
         run: |
-          set -e
           ./scripts/test.sh
       
       - name: Upload test results
