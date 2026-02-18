@@ -1,0 +1,55 @@
+name: CI - Unit Tests
+
+on:
+  push:
+    branches:
+      - '**'  # Run on all branches
+  pull_request:
+    branches:
+      - '**'  # Run on PRs to all branches
+
+jobs:
+  unit-tests:
+    name: Run ztest Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: study_spec_kit_00
+      
+      - name: Initialize West workspace
+        working-directory: .
+        run: |
+          pip3 install 'west>=1.0.0,<2.0.0'
+          west init -l study_spec_kit_00
+      
+      - name: Configure West for Zephyr
+        working-directory: .
+        run: |
+          cat >> .west/config << 'EOF'
+          [zephyr]
+          base = external/zephyr
+          EOF
+      
+      - name: Update West dependencies
+        working-directory: .
+        run: |
+          west update --narrow -o=--depth=1
+      
+      - name: Run unit tests with Docker Compose
+        working-directory: study_spec_kit_00
+        run: |
+          set -e
+          docker compose run --rm test
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: study_spec_kit_00/twister-out/
+          retention-days: 7
