@@ -1,50 +1,159 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  Sync Impact Report
+  ==================
+  バージョン変更: なし（初版） → 1.0.0
+  変更された原則: なし（初期作成）
+  追加セクション:
+    - Core Principles（5 原則）
+    - 技術スタック制約
+    - 開発ワークフロー
+    - Governance
+  削除セクション: なし
+  テンプレート更新状況:
+    - .specify/templates/plan-template.md ✅ 整合確認済み
+    - .specify/templates/spec-template.md ✅ 整合確認済み
+    - .specify/templates/tasks-template.md ✅ 整合確認済み
+    - .specify/templates/checklist-template.md ✅ 整合確認済み
+    - .specify/templates/agent-file-template.md ✅ 整合確認済み
+  フォローアップ TODO: なし
+-->
+
+# study_spec_kit_00 Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. ロジック分離（ハードウェア非依存設計）
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+- ハードウェアに依存しない純粋ロジックは、専用モジュール
+  （`src/<module>.c` / `src/<module>.h`）として分離しなければならない
+  （MUST）。
+- ハードウェア抽象化層（HAL）やドライバ依存コードは `main.c`
+  または専用の統合レイヤーに閉じ込めなければならない（MUST）。
+- 分離されたロジックモジュールは、ハードウェアドライバのスタブ
+  ヘッダのみで `native_sim` 上でコンパイル・テスト可能でなければ
+  ならない（MUST）。
+- 新機能追加時はまず「テスト可能な純粋関数」として設計し、
+  ハードウェア連携は後から統合する。
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**根拠**: nRF52840DK のような組み込みターゲットでは、実機なしに
+ロジックを高速に検証できることが開発効率とコード品質を決定的に
+左右する。`led_toggle.c` / `led_toggle.h` への分離実績がこの
+原則の有効性を実証している。
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. テスト先行（非交渉）
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+- TDD は必須とする。テスト作成 → テスト失敗確認（Red）→ 実装
+  （Green）→ リファクタ（Refactor）のサイクルを厳守しなければ
+  ならない（MUST）。
+- テストフレームワークは Zephyr 公式の **ztest**
+  （`ZTEST_SUITE` / `ZTEST` 新 API）を使用する。
+- テストランナーは **Twister**（`west twister`）を使用し、
+  `native_sim` ボードターゲットで実行する。
+- すべてのユーザーストーリーに対して独立したテストスイートが
+  存在しなければならない（MUST）。
+- テストなしのロジックコードのマージは禁止する。
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**根拠**: 組み込みソフトウェアのバグは実機デバッグに多大な
+コストを要する。テスト先行により、ロジックレベルのバグを
+開発初期段階で排除する。
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. 仕様駆動開発
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+- すべての機能は仕様書（`specs/<NNN>-<feature>/spec.md`）から
+  開始しなければならない（MUST）。
+- 仕様 → 計画（`plan.md`）→ タスク（`tasks.md`）→ 実装の
+  順序に従わなければならない（MUST）。
+- ユーザーストーリーは優先度（P1, P2, P3...）を付与し、各
+  ストーリーは独立してテスト・デリバリー可能でなければならない
+  （MUST）。
+- 要件は機能要件（FR-NNN）と成功基準（SC-NNN）として定量的に
+  定義する。曖昧な要件には `NEEDS CLARIFICATION` を明記する。
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**根拠**: 仕様なき実装は手戻りの最大要因である。spec-kit
+ワークフローにより、要件漏れと認識齟齬を防止する。
+
+### IV. クロスプラットフォーム検証
+
+- テストは以下の環境で実行可能でなければならない（MUST）：
+  - **macOS**: Docker コンテナ（`linux/amd64`）経由で
+    `native_sim` を実行
+  - **Linux（x86_64）**: ネイティブで `native_sim` を直接実行
+  - **CI/CD**: Docker ベースの自動実行
+- `docker-compose.yml` および `scripts/test.sh` を常に最新に
+  保ち、`docker compose run --rm test` で全テストが通過する
+  状態を維持しなければならない（MUST）。
+- テスト環境の構築手順は `README.md` に文書化する。
+
+**根拠**: 開発チームメンバーの環境（macOS / Linux / CI）を
+問わず、同一のテスト結果を再現できることが品質保証の前提である。
+
+### V. シンプルさと段階的拡張
+
+- YAGNI（You Aren't Gonna Need It）原則を遵守する。現時点で
+  必要のない機能・抽象化を実装してはならない（MUST NOT）。
+- 複雑さの導入には明示的な正当化が必要であり、
+  Complexity Tracking テーブルに記録しなければならない（MUST）。
+- 新しい依存ライブラリの追加は、既存の Zephyr / nRF Connect SDK
+  の機能で代替できないことを確認した上で行う。
+- コードは可読性を最優先とし、過度な最適化より明瞭さを選択する。
+
+**根拠**: 組み込みシステムではリソース制約と保守性の両立が重要で
+ある。不要な複雑さはバグと技術的負債の温床となる。
+
+## 技術スタック制約
+
+- **言語**: C（C99/C11）
+- **RTOS**: Zephyr RTOS（nRF Connect SDK v3.2.2 経由）
+- **ターゲットボード**: nRF52840DK（PCA10056）
+- **ビルドシステム**: CMake + Ninja（West 経由）
+- **テスト**: ztest + Twister、`native_sim` ボードターゲット
+- **ハードウェア抽象化**: `dk_buttons_and_leds` ライブラリ
+  （nRF Connect SDK 提供）
+- **コンテナ**: Docker（Ubuntu 22.04 / linux/amd64）— macOS
+  テスト環境用
+- **ライセンス**: Nordic-5-Clause
+- 上記スタック外の技術導入は、本憲法の改訂手続きを経ること。
+
+## 開発ワークフロー
+
+1. **仕様作成**: `/speckit.spec` で仕様書を作成。ユーザー
+   ストーリーと受入シナリオを定義する。
+2. **計画策定**: `/speckit.plan` で技術調査・実装計画を策定。
+   Constitution Check を実施し、本憲法への準拠を確認する。
+3. **タスク分解**: `/speckit.tasks` でユーザーストーリー単位の
+   タスクリストを作成。各タスクに `[P]` / `[US#]` ラベルを付与。
+4. **テスト作成**: テスト対象のロジックに対して ztest テスト
+   スイートを先に作成し、失敗を確認する（Red）。
+5. **実装**: テストを通過させる最小限のコードを実装する（Green）。
+6. **リファクタ**: テストが通過する状態を維持しつつ、コードを
+   整理する（Refactor）。
+7. **検証**: `docker compose run --rm test` または
+   `./scripts/test.sh` で全テスト通過を確認する。
+8. **実機確認**: `west flash` で書き込み、`README.md` の動作確認
+   手順に従って手動テストを実施する。
+9. **コミット**: 各タスクまたは論理的なまとまりごとにコミットする。
+   コミットメッセージは日本語で記述する。
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- 本憲法はプロジェクトのすべての開発慣行に優先する。
+- **改訂手続き**: 憲法の変更は以下の手順に従う：
+  1. 変更提案を文書化（変更内容、根拠、影響範囲）
+  2. Sync Impact Report を作成し、影響を受ける
+     テンプレート・ドキュメントを特定
+  3. 変更を適用し、影響を受けるすべてのファイルを更新
+  4. バージョンを Semantic Versioning に従って更新
+- **バージョニングポリシー**:
+  - MAJOR: 原則の削除・再定義など後方互換性のない変更
+  - MINOR: 新しい原則・セクションの追加、重要なガイダンス拡充
+  - PATCH: 表現の明確化、誤字修正、意味を変えない修正
+- **コンプライアンス確認**: 各機能の `plan.md` に
+  Constitution Check セクションを設け、本憲法の各原則への
+  準拠状況を記録しなければならない（MUST）。
+- **言語ポリシー**: すべての出力（コメント、コミットメッセージ、
+  ドキュメント、ユーザーへの回答）は日本語で記述する。技術用語は
+  英語のまま使用してよい。
+- ランタイム開発ガイダンスは `.github/copilot-instructions.md`
+  を参照すること。
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-02-24 | **Last Amended**: 2026-02-24
