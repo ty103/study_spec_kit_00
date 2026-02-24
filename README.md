@@ -216,6 +216,45 @@ macOS (ARM64)
 | Linux (x86_64) | `./scripts/test.sh` | ❌ 不要 |
 | CI/CD (GitHub Actions 等) | `docker compose run --rm test` | Docker ベース |
 
+## speckit 開発ワークフロー
+
+本プロジェクトでは **speckit** を使用して、仕様策定から実装までを体系的に進めます。
+コマンドの実行順序・入力・出力・手動変更時の留意点については、以下のドキュメントを参照してください。
+
+→ **[docs/speckit-workflow.md](docs/speckit-workflow.md)** — コマンドの実行順序・入力・出力・手動変更時の留意点
+→ **[docs/speckit-internals.md](docs/speckit-internals.md)** — Prompt / Agent / スクリプト / テンプレートの内部構造
+→ **[docs/speckit-customization.md](docs/speckit-customization.md)** — テンプレートの日本語化・カスタマイズ方法
+
+## メモリ使用量レポート
+
+ビルド後のメモリ使用量（Flash / RAM）を自動計測し、閾値チェックを行います。
+プロジェクト憲法（原則 VI. メモリバジェット管理）に基づき、nRF52840 のリソース上限の 80% を閾値としています。
+
+### 実行方法
+
+ワークスペースルートで、ビルド完了後に実行します。
+
+```bash
+# コンソール出力（テーブル形式 + 閾値判定）
+./study_spec_kit_00/scripts/memory-report.sh
+
+# Markdown レポート出力（specs/001-led-toggle-button/memory-report.md）
+./study_spec_kit_00/scripts/memory-report.sh --markdown
+
+# JSON 出力（CI/スクリプト連携用）
+./study_spec_kit_00/scripts/memory-report.sh --json
+
+# CI モード（閾値超過で exit 1）
+./study_spec_kit_00/scripts/memory-report.sh --ci
+```
+
+### 閾値
+
+| リソース | 全容量 | 閾値 (80%) | 超過時の対応 |
+|---------|--------|-----------|-------------|
+| Flash | 1024 KB | 819 KB | Complexity Tracking テーブルに正当化を記録 |
+| RAM | 256 KB | 204 KB | Complexity Tracking テーブルに正当化を記録 |
+
 ## 動作確認（実機手動テスト）
 
 | # | テスト項目 | 手順 | 期待結果 |
@@ -241,9 +280,14 @@ study_spec_kit_00/
 ├── .dockerignore               # Docker ビルド除外設定
 ├── docker/
 │   └── Dockerfile.test         # テスト環境用 Dockerfile (Ubuntu 22.04 + Zephyr SDK)
+├── docs/
+│   ├── speckit-workflow.md     # speckit 開発ワークフロー詳細
+│   ├── speckit-internals.md    # speckit の内部構造・動作原理
+│   └── speckit-customization.md # テンプレートのカスタマイズ方法
 ├── scripts/
 │   ├── env.sh                  # ツールチェーン環境セットアップ
-│   └── test.sh                 # テスト実行スクリプト
+│   ├── test.sh                 # テスト実行スクリプト
+│   └── memory-report.sh        # メモリ使用量レポート・閾値チェック
 ├── src/
 │   ├── main.c                  # アプリケーションエントリポイント
 │   ├── led_toggle.h            # トグルロジック API（テスト可能モジュール）
