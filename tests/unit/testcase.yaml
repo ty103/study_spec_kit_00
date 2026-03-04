@@ -4,6 +4,7 @@ tests:
       - button
       - led
       - unit_test
+      - fw_update
     platform_allow:
       - native_sim
     integration_platforms:

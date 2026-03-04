@@ -1,3 +1,9 @@
 build/
 twister-out*/
 .west/
+.git/
+Dockerfile*
+.dockerignore
+*.log*
+.env*
+coverage/

@@ -5,5 +5,6 @@ project(led_toggle_button)
 target_sources(app PRIVATE
   src/main.c
   src/led_toggle.c
+  src/fw_update.c
 )
 target_include_directories(app PRIVATE src)

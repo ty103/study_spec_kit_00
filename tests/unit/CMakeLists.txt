@@ -4,7 +4,9 @@ project(led_toggle_button_test)
 
 target_sources(app PRIVATE
   src/main.c
+  src/fw_update_test.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../src/led_toggle.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../src/fw_update.c
 )
 
 # Stub dk_buttons_and_leds.h must be found BEFORE any SDK includes

@@ -1,6 +1,9 @@
 # Build outputs
 build/
 twister-out/
+bin/
+obj/
+out/
 
 # Zephyr / west
 *.elf
@@ -10,7 +13,11 @@ twister-out/
 *.lst
 *.o
 *.a
+*.so
+*.exe
 *.d
+Makefile
+config.log
 
 # IDE
 .vscode/
