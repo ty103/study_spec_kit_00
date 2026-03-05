@@ -14,6 +14,11 @@ services:
     volumes:
       # Mount the entire workspace (project + external deps) as read-write
       - ..:/workspace
+      # ccache キャッシュを永続化する（コンテナ再起動後もキャッシュを保持）
+      - ccache-data:/workspace/.ccache
     environment:
       - ZEPHYR_BASE=/workspace/external/zephyr
     working_dir: /workspace/study_spec_kit_00
+
+volumes:
+  ccache-data:

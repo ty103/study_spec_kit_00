@@ -77,6 +77,8 @@
 #   ./scripts/test.sh                               # すべてのユニットテストを実行
 #   ./scripts/test.sh --verbose                      # 詳細な出力を表示して実行
 #   ./scripts/test.sh --filter "led_toggle_edge"     # 特定のテストスイートだけ実行
+#   ./scripts/test.sh --coverage                     # カバレッジ計測付きで実行
+#   ./scripts/test.sh --clean                        # ビルド成果物を削除してフルビルド
 #
 # ■ 実行環境
 #   このスクリプトは Linux 環境（Docker コンテナ内 または WSL）で実行する想定。
@@ -118,6 +120,8 @@ WORKSPACE_ROOT="$(cd "${PROJECT_ROOT}/.." && pwd)"
 # shift : 引数リストを1つ左にずらす（次の引数を $1 にする）。
 
 VERBOSE=""       # 詳細表示フラグ。--verbose が指定されたら "-v" が入る
+COVERAGE=""     # カバレッジ計測フラグ。--coverage が指定されたら有効
+CLEAN=""        # クリーンビルドフラグ。--clean が指定されたらビルド成果物を削除
 EXTRA_ARGS=""    # その他の追加引数をまとめて格納する変数
 
 while [[ $# -gt 0 ]]; do
@@ -126,6 +130,18 @@ while [[ $# -gt 0 ]]; do
             # --verbose または -v が指定された場合、Twister に -v オプションを渡す
             VERBOSE="-v"
             shift  # 次の引数へ進む
+            ;;
+        --coverage)
+            # --coverage が指定された場合、Twister にカバレッジ計測オプションを渡す
+            COVERAGE="true"
+            shift
+            ;;
+        --clean)
+            # --clean が指定された場合、前回のビルド成果物を削除してフルビルドする
+            # 通常はインクリメンタルビルド（差分ビルド）で高速に実行するが、
+            # ビルドに問題がある場合やクリーンな状態から始めたい場合に使う
+            CLEAN="true"
+            shift
             ;;
         *)
             # 上記以外の引数はすべて EXTRA_ARGS に追加（Twister にそのまま渡される）
@@ -219,9 +235,33 @@ fi
 # --- テストの実行 -------------------------------------------------------------
 # ここからが本題。Twister を使ってユニットテストをビルド・実行する。
 
+# --- カバレッジ計測の準備 -----------------------------------------------------
+# --coverage が指定された場合、gcovr がインストールされているか確認し、
+# 未インストールなら自動でインストールする。
+#   gcovr : GCC のカバレッジデータ（.gcda/.gcno）から HTML/XML レポートを生成するツール。
+COVERAGE_ARGS=""
+if [[ "${COVERAGE}" == "true" ]]; then
+    if ! command -v gcovr &>/dev/null; then
+        echo "gcovr をインストールしています..."
+        pip3 install --quiet gcovr 2>/dev/null || true
+    fi
+    # Twister に渡すカバレッジオプションを組み立てる
+    #   --coverage              : カバレッジ計測を有効にする（gcc に -fprofile-arcs -ftest-coverage を付与）
+    #   --coverage-tool gcovr   : レポート生成に gcovr を使用する
+    #   --coverage-basedir      : カバレッジ計測のルートディレクトリを src/ に限定する
+    #   --coverage-formats      : 出力形式を指定する（カンマ区切り）
+    #                             html : ブラウザで開けるカバレッジレポート
+    #                             txt  : ターミナルに表示できるテキストレポート
+    COVERAGE_ARGS="--coverage --coverage-tool gcovr --coverage-basedir ${PROJECT_ROOT}/src --coverage-formats html,txt"
+fi
+
 # テスト開始のヘッダーを表示
 echo "============================================="
-echo " Running unit tests (native_sim + ztest)"
+if [[ "${COVERAGE}" == "true" ]]; then
+    echo " Running unit tests with COVERAGE (native_sim + ztest)"
+else
+    echo " Running unit tests (native_sim + ztest)"
+fi
 echo " ZEPHYR_BASE: ${ZEPHYR_BASE}"
 echo "============================================="
 
@@ -237,12 +277,17 @@ PROJECT_REL_PATH="${PROJECT_ROOT#${WORKSPACE_ROOT}/}"
 # カレントディレクトリ（作業ディレクトリ）をワークスペースルートに変更する。
 cd "${WORKSPACE_ROOT}"
 
-# 前回のテスト結果ファイルを削除する。
-# Twister は実行結果を twister-out/ ディレクトリに出力するが、
-# 古い結果が残っていると混乱するため、毎回クリーンな状態で始める。
-#   rm -rf : ディレクトリごと強制的に削除する（-r:再帰的, -f:確認なし）
-#   * : ワイルドカード。twister-out で始まるすべてのファイル/フォルダが対象
-rm -rf "${PROJECT_REL_PATH}"/twister-out*
+# --- ビルド成果物の管理 -------------------------------------------------------
+# デフォルトではインクリメンタルビルド（差分ビルド）を使用する。
+# 前回のビルド成果物（twister-out/）を残しておくことで、CMake の再構成を
+# スキップし、変更があったファイルだけを再コンパイルできる。
+# これにより、2回目以降の実行時間を大幅に短縮できる（約1分30秒 → 数十秒）。
+#
+# --clean が指定された場合のみ、ビルド成果物を完全に削除してフルビルドする。
+if [[ "${CLEAN}" == "true" ]]; then
+    echo "クリーンビルド: 前回のビルド成果物を削除します..."
+    rm -rf "${PROJECT_REL_PATH}"/twister-out*
+fi
 
 # === west twister コマンド（テスト実行の中核）===
 # west twister を実行してユニットテストをビルド・実行する。
@@ -260,11 +305,19 @@ rm -rf "${PROJECT_REL_PATH}"/twister-out*
 #
 # \ （バックスラッシュ）は「次の行に続く」という意味。
 # 長いコマンドを見やすく複数行に分けて書くために使う。
+# === west twister の高速化オプション ===
+#   -n (--no-clean)    : ビルドディレクトリを再利用する
+#                        前回のビルド成果物があれば差分ビルドになる
+#   -x=USE_CCACHE=1    : ccache（コンパイルキャッシュ）を有効にする
+#                        同じソースの再コンパイルをキャッシュからスキップする
 west twister \
     -T "${PROJECT_REL_PATH}/tests/unit" \
     -p native_sim \
     -O "${PROJECT_REL_PATH}/twister-out" \
+    -n \
+    -x=USE_CCACHE=1 \
     ${VERBOSE} \
+    ${COVERAGE_ARGS} \
     ${EXTRA_ARGS} \
     2>&1
 
@@ -280,6 +333,19 @@ echo "============================================="
 if [[ ${EXIT_CODE} -eq 0 ]]; then
     # -eq : 数値の等価比較（equal の略）
     echo " ✅ All tests PASSED"
+    if [[ "${COVERAGE}" == "true" ]]; then
+        COVERAGE_TXT="${PROJECT_REL_PATH}/twister-out/coverage/coverage.txt"
+        if [[ -f "${COVERAGE_TXT}" ]]; then
+            echo ""
+            echo " 📊 カバレッジサマリー:"
+            echo " ---------------------------------------------"
+            cat "${COVERAGE_TXT}"
+            echo " ---------------------------------------------"
+        fi
+        echo ""
+        echo " 📊 カバレッジレポート (詳細):"
+        echo "   HTML: twister-out/coverage/index.html"
+    fi
 else
     echo " ❌ Tests FAILED (exit code: ${EXIT_CODE})"
     echo ""

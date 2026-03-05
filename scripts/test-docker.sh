@@ -11,6 +11,8 @@
 #   ./scripts/test-docker.sh                              # すべてのテストを実行
 #   ./scripts/test-docker.sh --verbose                     # 詳細な出力を表示
 #   ./scripts/test-docker.sh --filter "led_toggle_edge"    # 特定のテストだけ実行
+#   ./scripts/test-docker.sh --coverage                    # カバレッジ計測付きで実行
+#   ./scripts/test-docker.sh --clean                       # ビルド成果物を削除してフルビルド
 #   ./scripts/test-docker.sh --shell                       # コンテナ内でシェルを起動
 #
 # ■ 前提条件

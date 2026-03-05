@@ -68,7 +68,7 @@ west twister -T tests/unit -p nrf52840dk/nrf52840 --device-testing \
 
 **ztest のテストコード自体は全く同じものが動きます。** `ZTEST()` や `zassert_equal()` はプラットフォームに依存しません。
 
-ただし注意点が1つあります。現在のプロジェクトでは `dk_buttons_and_leds.h` のスタブを使っています。実機テストの場合は本物の SDK ヘッダが使われるため、GPIO 初期化 (`dk_leds_init()`) などの呼び出しが必要になることがあります。
+ただし注意点が1つあります。現在のプロジェクトでは `dk_buttons_and_leds.h` のスタブを使っています。実機テストの場合は本物の SDK ヘッダが使われるため、CMakeLists.txt でスタブの適用を native_sim に限定し、実機向けにはボード固有の設定ファイル（`boards/nrf52840dk_nrf52840.conf`）で `CONFIG_DK_LIBRARY=y` を有効にする必要があります。本プロジェクトではこの対応済みです。
 
 ### native_sim と実機テストの比較
 
@@ -256,11 +256,24 @@ twister-out/coverage/
 
 ### Docker 環境での実行
 
-Docker コンテナ内で実行するには、コンテナに `gcovr` をインストールする必要があります。`Dockerfile.test` に追加するか、`test.sh` に `--coverage` オプションの対応を入れることで実現できます。
+Docker コンテナ内で実行するには、コンテナに `gcovr` をインストールする必要があります。**本プロジェクトでは `Dockerfile.test` に `gcovr` が含まれており、`test.sh` に `--coverage` オプションが用意されているため、以下のコマンドだけでカバレッジ計測が可能です。**
 
 ```bash
-pip3 install gcovr
-west twister -T tests/unit -p native_sim --coverage --coverage-tool gcovr
+# macOS の場合（Docker 経由）
+./scripts/test-docker.sh --coverage
+
+# Linux の場合（Docker 不要）
+./scripts/test.sh --coverage
+```
+
+テスト成功後、レポートの場所が表示されます：
+
+```
+ ✅ All tests PASSED
+
+ 📊 カバレッジレポート:
+   HTML: twister-out/coverage/index.html
+   XML:  twister-out/coverage/coverage.xml
 ```
 
 ### カバレッジで分かること

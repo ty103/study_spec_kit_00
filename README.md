@@ -106,11 +106,13 @@ nRF52840DK を USB で接続した状態で実行してください。
 |------|------|
 | フレームワーク | Zephyr ztest（`ZTEST_SUITE` / `ZTEST` 新 API） |
 | テストランナー | Twister（`west twister`） |
-| ボードターゲット | `native_sim`（Linux 上で ELF として実行） |
-| テストケース数 | 19（4 スイート） |
-| 実行環境 | Docker（linux/amd64）または WSL / Linux ネイティブ |
+| ボードターゲット | `native_sim`（シミュレーション）/ `nrf52840dk/nrf52840`（実機） |
+| テストケース数 | 41（8 スイート：LED トグル 4 + FW アップデート 4） |
+| 実行環境 | Docker（linux/amd64）、WSL / Linux ネイティブ、または nRF52840DK 実機 |
 
 ### テストスイート構成
+
+#### LED トグルテスト（`main.c`）
 
 | スイート名 | テスト数 | カバーする要件 |
 |-----------|---------|---------------|
@@ -119,22 +121,35 @@ nRF52840DK を USB で接続した状態で実行してください。
 | `led_toggle_multi` | 4 | FR-005（独立動作、同時押し） |
 | `led_toggle_edge` | 5 | FR-006, FR-007（押下エッジ検出、長押し 1 回のみ） |
 
+#### FW アップデートテスト（`fw_update_test.c`）
+
+| スイート名 | テスト数 | カバーする要件 |
+|-----------|---------|---------------|
+| `fw_update_init` | 1 | 初期状態（IDLE） |
+| `fw_update_us1` | 8 | 状態遷移（IDLE→WAITING→TRANSFERRING→VERIFYING→通知）、LED 制御 |
+| `fw_update_us2` | 3 | キャンセル操作、転送中のキャンセル禁止 |
+| `fw_update_us3` | 4 | タイムアウト動作（30秒）|
+| `fw_update_us4` | 4 | ボタン許可/禁止の状態管理 |
+
 ### テスト実行方法
 
-#### macOS（Docker 使用）
+#### macOS（Docker 使用 — シミュレーション）
 
 ```bash
 # 初回: Docker イメージのビルド（1〜2 分）
 docker compose build test
 
-# テスト実行
-docker compose run --rm test
+# テスト実行（スクリプト経由）
+./scripts/test-docker.sh
+
+# オプション付き
+./scripts/test-docker.sh --verbose
 
 # デバッグ用の対話シェル
-docker compose run --rm test bash
+./scripts/test-docker.sh --shell
 ```
 
-#### Windows / WSL / Linux（Docker 不要）
+#### Windows / WSL / Linux（Docker 不要 — シミュレーション）
 
 WSL や Linux 環境では Docker なしで直接実行できます。
 
@@ -143,10 +158,33 @@ source scripts/env.sh
 ./scripts/test.sh
 ```
 
+#### nRF52840DK 実機テスト
+
+実機にテストファームウェアを書き込んで、実際のハードウェア上でテストを実行します。
+
+```bash
+source scripts/env.sh
+
+# シリアルポートを自動検出して実行
+./scripts/test-device.sh
+
+# シリアルポートを手動指定
+./scripts/test-device.sh --serial /dev/ttyACM0
+
+# 詳細出力
+./scripts/test-device.sh --verbose
+```
+
+> ⚠️ テストファームウェアが書き込まれるため、通常のアプリは上書きされます。テスト後にアプリを戻すには `west build + west flash` を再実行してください。
+
 #### Twister を直接実行
 
 ```bash
+# シミュレーション（native_sim）
 west twister -T tests/unit -p native_sim
+
+# 実機（nRF52840DK）
+west twister -T tests/unit -p nrf52840dk/nrf52840 --device-testing --device-serial /dev/ttyACM0
 ```
 
 ### テスト結果の確認
@@ -195,7 +233,9 @@ macOS (ARM64)
 #### なぜ `CONFIG_DK_LIBRARY` をテストで無効にしたか
 
 `dk_buttons_and_leds` ライブラリの実体は nRF ハードウェア（nrfx GPIO ドライバ）に依存しており、`native_sim` ではコンパイルできません。
-テストではアプリケーションのトグルロジックのみを検証するため、DK ライブラリのビルドは不要です。
+テストではアプリケーションのトグルロジックのみを検証するため、native_sim では DK ライブラリのビルドは不要です。
+
+実機テスト（`nrf52840dk/nrf52840`）の場合は、`tests/unit/boards/nrf52840dk_nrf52840.conf` で `CONFIG_DK_LIBRARY=y` を有効にしており、本物の SDK ヘッダが使われます。`CMakeLists.txt` ではスタブの適用を `native_sim` に限定しているため、実機ビルド時にスタブと本物のヘッダが衝突することはありません。
 
 #### 制約事項
 
@@ -203,17 +243,19 @@ macOS (ARM64)
 |------|------|
 | macOS では Docker が必須 | `native_sim` は Linux 専用のため |
 | Docker イメージは `linux/amd64` 固定 | Apple Silicon では Rosetta エミュレーションで動作。x86_64 ネイティブ環境より低速（テスト全体で約 40 秒） |
-| ハードウェア連携テストはカバー外 | `dk_buttons_and_leds` の初期化・GPIO 制御は実機テスト（`quickstart.md`）で検証 |
+| ハードウェア連携テストはカバー外 | `dk_buttons_and_leds` の初期化・GPIO 制御は実機手動テスト（`quickstart.md`）で検証 |
 | DK ライブラリのモック未実装 | 現時点では純粋ロジックのテストのみ。`main.c` の `button_handler` → `dk_set_leds` 呼び出しは未テスト |
+| テスト用 prj.conf はアプリ用と異なる | テストプロジェクトは独立した Zephyr アプリとしてビルドされるため、`tests/unit/prj.conf` が使われる。ロジックに影響する Kconfig は prj.conf の `[SYNC]` セクションに配置し、`./scripts/check-conf-sync.sh` で同期を検証できる |
 
 #### チームメンバー向けのプラットフォーム対応表
 
 | 環境 | テスト方法 | Docker 必要？ |
 |------|-----------|-------------|
-| macOS (Intel) | `docker compose run --rm test` | ✅ 必要 |
-| macOS (Apple Silicon) | `docker compose run --rm test` | ✅ 必要（Rosetta） |
+| macOS (Intel) | `./scripts/test-docker.sh` | ✅ 必要 |
+| macOS (Apple Silicon) | `./scripts/test-docker.sh` | ✅ 必要（Rosetta） |
 | Windows + WSL | `./scripts/test.sh` | ❌ 不要 |
 | Linux (x86_64) | `./scripts/test.sh` | ❌ 不要 |
+| nRF52840DK 実機 | `./scripts/test-device.sh` | ❌ 不要 |
 | CI/CD (GitHub Actions 等) | `docker compose run --rm test` | Docker ベース |
 
 ## speckit 開発ワークフロー
@@ -273,7 +315,7 @@ macOS (ARM64)
 ```
 study_spec_kit_00/
 ├── CMakeLists.txt              # Zephyr ビルド定義
-├── prj.conf                    # Kconfig 設定
+├── prj.conf                    # Kconfig 設定（[SYNC] / [NO-SYNC] カテゴリ付き）
 ├── west.yml                    # West マニフェスト（NCS v3.2.2）
 ├── README.md                   # このファイル
 ├── docker-compose.yml          # テスト用 Docker Compose 設定
@@ -283,10 +325,17 @@ study_spec_kit_00/
 ├── docs/
 │   ├── speckit-workflow.md     # speckit 開発ワークフロー詳細
 │   ├── speckit-internals.md    # speckit の内部構造・動作原理
-│   └── speckit-customization.md # テンプレートのカスタマイズ方法
+│   ├── speckit-customization.md # テンプレートのカスタマイズ方法
+│   └── ztest/
+│       ├── ztest-and-twister-guide.md  # ztest / Twister 入門ガイド
+│       └── ztest-and-twister-FAQ.md    # ztest / Twister FAQ
 ├── scripts/
 │   ├── env.sh                  # ツールチェーン環境セットアップ
-│   ├── test.sh                 # テスト実行スクリプト
+│   ├── test.sh                 # テスト実行スクリプト（Linux / WSL 用）
+│   ├── test-docker.sh          # テスト実行スクリプト（macOS Docker 経由）
+│   ├── test-device.sh          # テスト実行スクリプト（nRF52840DK 実機）
+│   ├── check-conf-sync.sh      # prj.conf [SYNC] ↔ テスト用ボード conf 同期チェック
+│   ├── mcumgr-verify.sh        # MCUmgr DFU 動作確認スクリプト
 │   └── memory-report.sh        # メモリ使用量レポート・閾値チェック
 ├── src/
 │   ├── main.c                  # アプリケーションエントリポイント
@@ -296,11 +345,14 @@ study_spec_kit_00/
 │   └── unit/
 │       ├── CMakeLists.txt      # テスト用 Zephyr ビルド定義
 │       ├── prj.conf            # テスト用 Kconfig
-│       ├── testcase.yaml       # Twister テスト設定（native_sim）
+│       ├── testcase.yaml       # Twister テスト設定（native_sim / nrf52840dk）
+│       ├── boards/
+│       │   └── nrf52840dk_nrf52840.conf  # 実機テスト用追加 Kconfig
 │       ├── src/
-│       │   └── main.c          # テストケース（19 件、4 スイート）
+│       │   ├── main.c          # LED トグルテスト（19 件、4 スイート）
+│       │   └── fw_update_test.c # FW アップデートテスト（20 件、5 スイート）
 │       └── stubs/
-│           └── dk_buttons_and_leds.h  # DK マクロ定義のスタブヘッダ
+│           └── dk_buttons_and_leds.h  # DK マクロ定義のスタブ（native_sim 用）
 └── specs/
     └── 001-led-toggle-button/
         ├── spec.md             # 機能仕様書

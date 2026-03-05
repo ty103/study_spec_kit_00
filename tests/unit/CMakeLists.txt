@@ -9,10 +9,15 @@ target_sources(app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../src/fw_update.c
 )
 
-# Stub dk_buttons_and_leds.h must be found BEFORE any SDK includes
-target_include_directories(app BEFORE PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/stubs
-)
+# native_sim（シミュレーション）の場合はスタブヘッダを使用する。
+# 実機（nrf52840dk 等）の場合は nRF Connect SDK の本物のヘッダが使われるため
+# スタブは不要（含めると二重定義になる）。
+if("${BOARD}" MATCHES "native_sim")
+  target_include_directories(app BEFORE PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+  )
+endif()
+
 target_include_directories(app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../src
 )
